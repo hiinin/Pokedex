@@ -1,0 +1,9 @@
+# Cache das respostas da PokeAPI
+storage/cache/*
+!storage/cache/.gitkeep
+
+# IDE / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
