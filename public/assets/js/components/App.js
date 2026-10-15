@@ -2,6 +2,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { api } from '../api.js';
 import { GENERATIONS, typeColor, typeLabel } from '../utils.js';
 import PokemonCard from './PokemonCard.js';
+import PokemonModal from './PokemonModal.js';
 
 const PAGE_SIZE = 24;
 const BATCH_SIZE = 48;
@@ -11,7 +12,7 @@ const BATCH_SIZE = 48;
  */
 export default {
   name: 'App',
-  components: { PokemonCard },
+  components: { PokemonCard, PokemonModal },
   setup() {
     // ---------- Estado ----------
     const names = ref([]);
@@ -174,8 +175,26 @@ export default {
       sort.value = 'id-asc';
     }
 
+    // ---------- Modal (rota por hash: #/pokemon/25) ----------
+    function readHash() {
+      const match = window.location.hash.match(/^#\/pokemon\/(\d+)$/);
+      selectedId.value = match ? Number(match[1]) : null;
+    }
+
     function openPokemon(id) {
-      selectedId.value = id;
+      window.location.hash = `/pokemon/${id}`;
+    }
+
+    function closeModal() {
+      if (window.location.hash) {
+        history.pushState('', document.title, window.location.pathname + window.location.search);
+      }
+      selectedId.value = null;
+    }
+
+    function openRandom() {
+      const max = names.value.length || 1025;
+      openPokemon(Math.floor(Math.random() * max) + 1);
     }
 
     async function boot() {
@@ -195,10 +214,15 @@ export default {
 
     onMounted(() => {
       setupObserver();
+      readHash();
+      window.addEventListener('hashchange', readHash);
       boot();
     });
 
-    onBeforeUnmount(() => observer?.disconnect());
+    onBeforeUnmount(() => {
+      observer?.disconnect();
+      window.removeEventListener('hashchange', readHash);
+    });
 
     return {
       GENERATIONS,
@@ -222,6 +246,8 @@ export default {
       toggleType,
       clearFilters,
       openPokemon,
+      closeModal,
+      openRandom,
       boot,
       typeColor,
       typeLabel,
@@ -234,7 +260,12 @@ export default {
           <img src="assets/img/pokeball.svg" alt="" class="brand__logo">
           Pokédex
         </a>
-        <nav class="header__actions" aria-label="Ações"></nav>
+        <nav class="header__actions" aria-label="Ações">
+          <button id="random-button" class="btn btn--primary" type="button" @click="openRandom">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+            <span class="btn__label">Surpreenda-me</span>
+          </button>
+        </nav>
       </div>
     </header>
 
@@ -354,5 +385,14 @@ export default {
         Pokémon e nomes relacionados são marcas de Nintendo, Game Freak e The Pokémon Company.
       </div>
     </footer>
+
+    <Transition name="modal">
+      <PokemonModal
+        v-if="selectedId"
+        :id="selectedId"
+        @close="closeModal"
+        @navigate="openPokemon"
+      />
+    </Transition>
   `,
 };
